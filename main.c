@@ -8,6 +8,7 @@
 int main(void)
 {
     char *command;
+    char **args;
     int status;
 
     while (1)
@@ -20,10 +21,18 @@ int main(void)
             break;
         }
 
-        /* Execute the command */
-        status = execute_command(command);
-        
+        args = tokenize_command(command); /* Tokenize the input */
+        if (args[0] == NULL) /* No command entered */
+        {
+            free(command);
+            free(args);
+            continue;
+        }
+
+        status = execute_command(args); /* Execute the command */
+
         free(command); /* Free the allocated memory */
+        free(args);    /* Free the tokenized arguments */
 
         if (status == -1) /* If exit command, break the loop */
             break;
@@ -59,31 +68,65 @@ char *read_command(void)
         return (NULL);
     }
 
-    /* Remove newline character from the input */
-    if (line[nread - 1] == '\n')
-        line[nread - 1] = '\0';
-
     return (line);
 }
 
 /**
+ * tokenize_command - Tokenizes the command string into arguments
+ * @command: The command string to tokenize
+ *
+ * Return: An array of strings (tokens)
+ */
+char **tokenize_command(char *command)
+{
+    int bufsize = MAX_TOKENS, position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *token;
+
+    if (!tokens)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    token = strtok(command, DELIMITERS);
+    while (token != NULL)
+    {
+        tokens[position] = token;
+        position++;
+
+        if (position >= bufsize)
+        {
+            bufsize += MAX_TOKENS;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens)
+            {
+                perror("realloc");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        token = strtok(NULL, DELIMITERS);
+    }
+    tokens[position] = NULL; /* Null-terminate the array */
+
+    return tokens;
+}
+
+/**
  * execute_command - Execute the command using execve
- * @command: The command to execute
+ * @args: The array of arguments (tokens)
  *
  * Return: 0 on success, -1 if the command is "exit"
  */
-int execute_command(char *command)
+int execute_command(char **args)
 {
     pid_t pid;
     int status;
-    char *argv[2]; /* Create a fixed-size array of pointers */
 
     /* Handle the "exit" command */
-    if (strcmp(command, "exit") == 0)
+    if (strcmp(args[0], "exit") == 0)
         return (-1);
-
-    argv[0] = command;  /* Set the first element to the command */
-    argv[1] = NULL;     /* The last element must be NULL */
 
     pid = fork(); /* Create a child process */
     if (pid == -1)
@@ -95,9 +138,9 @@ int execute_command(char *command)
     if (pid == 0) /* Child process */
     {
         /* Execute the command */
-        if (execve(argv[0], argv, NULL) == -1)
+        if (execve(args[0], args, NULL) == -1)
         {
-            perror(command);
+            perror(args[0]);
             exit(EXIT_FAILURE);
         }
     }
