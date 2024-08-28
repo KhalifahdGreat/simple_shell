@@ -19,7 +19,7 @@ int main(void)
             printf("\n");
             break;
         }
-        
+
         /* Execute the command */
         status = execute_command(command);
         
