@@ -12,7 +12,9 @@
 /* Function Prototypes */
 void prompt(void);
 char *read_command(void);
-int execute_command(char *command);
+char **tokenize_command(char *command);
+char *find_command_path(char *command);
+int execute_command(char **args);
 
 #endif /* SHELL_H */
 
